@@ -3,10 +3,18 @@
    [clojure.java.io :as io]
    [clojure.string :as str]))
 
-(ns-unmap *ns* '*eval)
-(ns-unmap *ns* 'f)
+(defonce lambdas (atom {}))
 
-(defmulti f (fn [op & args] op))
+(defmacro f [kw args body & rest]
+  `(do
+     (swap! lambdas assoc ~kw
+            {:name ~kw
+             :args (quote ~args)
+             :body (quote ~body)
+             :f (fn ~args ~body)})
+     (get @lambdas ~kw)))
+
+(ns-unmap *ns* '*eval)
 
 (defmulti *eval
   (fn [op env & args]
@@ -17,11 +25,16 @@
 (defn eval! [expr env]
   (apply *eval (first expr) env (rest expr)))
 
-(defn resolve! [fun]
+(defn resolve! [env fun]
   ;; TODO finish expr application
   (if (symbol? fun)
-    (if (contains? (set (keys (methods f))) (keyword fun))
-      (fn [& args] (apply f (keyword fun) args))
+    (if-let [lambda-cfg (get @lambdas (keyword fun))]
+      (fn [& args]
+        (let [f-arg (first (:args lambda-cfg))
+              args* (cond->> args
+                      (= f-arg 'env) (cons env)
+                      (and (map? f-arg) (= (:as f-arg) 'env)) (cons env))]
+          (apply (get lambda-cfg :f) args*)))
       (fn [& args] (apply (eval fun) args)))
     (fn [& args] (apply (eval fun) args))))
 
@@ -37,7 +50,7 @@
        (update-in env [::terms val]
                   #(-> (merge % {:type tp :symbol val})
                        (assoc-in [:applies-to noun]
-                                 {:with (resolve! fun)})))])
+                                 {:with (resolve! env fun)})))])
 
     (= tail 'makes)
     [noun
@@ -204,3 +217,4 @@
    (first (evaluate* expr)))
   ([expr env & args]
    (first (apply evaluate* expr env args))))
+

@@ -153,13 +153,45 @@
 
         (do ((set status) application accepted))))
 
-    (defmethod engine/f :set-status
-      [_ app status]
-      (merge app {:status (str status)}))
+    (engine/f :set-status [app status]
+     (merge app {:status (str status)}))
 
     (matcho/assert
      {:status "accepted"}
      (engine/evaluate expr {:application {:name "Alan" :family "Kay"}})))
+
+  (testing "if you specify env as the first arg you get whole execution context"
+    ;; TODO add argcheck
+
+    (def expr
+      '(eval-list
+        (to ((set status) application)
+            (use set-status))
+
+        (do ((set status) application accepted))))
+
+    (engine/f :set-status [env app status]
+              {:status (str status) :number (:number env)})
+
+    (matcho/assert
+     {:status "accepted" :number 1}
+     (engine/evaluate expr {:application {:name "Alan" :family "Kay"} :number 1}))
+
+    (def expr
+      '(eval-list
+        (to (scale number)
+            (use scale-number))
+
+        (do (scale number))))
+
+    (engine/f :scale-number [{:keys [factor] :as env} number]
+              (* number factor))
+
+    (def res
+      (engine/f :scale-number [{:keys [factor] :as env} number]
+               (* number factor)))
+
+    (= (engine/evaluate expr {:number 5 :factor 5}) 25))
 
   (testing "compound terms are evaluated with convention"
     (def expr
