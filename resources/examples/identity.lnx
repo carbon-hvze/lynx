@@ -1,0 +1,4 @@
+(eval-list
+ (to return argument
+     (use identity))
+ (do return argument))
