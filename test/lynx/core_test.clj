@@ -4,6 +4,7 @@
    [lynx.core :as lynx]
    [clojure.test :refer :all]))
 
+;; TODO add argcheck
 ;; most urgent todos:
 
 ;; finish test for when
@@ -22,9 +23,11 @@
 #_(testing "restrictions can be applied"
     (def expr
       '(eval-list
+
         (to click button
             ;; nasty API call here
             (use identity))
+
         (to click button
             (makes button clicked))))
 
@@ -32,6 +35,7 @@
                           {}
                           '(should button clicked)
                           '(do click button))
+
            '(should button clicked)))
 
     (is (lynx/evaluate expr
@@ -43,7 +47,9 @@
   (testing "noun is a term that has definition"
     (def expr
       '(eval-list
+
         (noun integer (just a positive number))
+
         (define integer)))
 
     (is (= (lynx/evaluate expr) '(just a positive number))))
@@ -51,8 +57,10 @@
   (testing "noun can have adjective value"
     (def expr
       '(eval-list
+
         (to (know-if integer even)
             (use even?))
+
         (integer even)))
     
     (is (true? (lynx/evaluate expr {:integer 4})))
@@ -91,11 +99,13 @@
 
     (is (= 'increment (lynx/evaluate expr))))
 
-  (testing "verb is applied with do"
+  (testing "verb can be applied"
     (def expr
       '(eval-list
+
         (to increment integer
          (use #(+ % 1)))
+
         (increment integer)))
 
     (is (= 2 (lynx/evaluate expr {:integer 1}))))
@@ -103,26 +113,29 @@
   (testing "verb can be used with different nouns"
     (def expr
       '(eval-list
-        (to find-first-letter integer
+
+        (to (find first letter) integer
             (use (fn [n] (str (first (str n))))))
-        (to find-first-letter string
+
+        (to (find first letter) string
             (use #(str (first %))))))
 
-    (lynx/evaluate* expr {:string "420" :integer 21})
-
     (is (= (lynx/evaluate expr {:string "420" :integer 21}
-                          '(find-first-letter string))
+                          '((find first letter) string))
            "4"))
 
-    (is (= (lynx/evaluate expr {:string "666" :integer 420} 
-                          '(find-first-letter integer))
+    (is (= (lynx/evaluate expr
+                          {:string "666" :integer 420}
+                          '((find first letter) integer))
 
            "4")))
 
   (testing "verbs can have parameters"
+
     (def expr
       '(eval-list
-        (verb (set status) "sets document status")
+
+        (verb (set status) (sets document status))
 
         (to (set status) application
             (use (fn [application status]
@@ -140,48 +153,48 @@
      (lynx/evaluate expr env)))
 
   (testing "verbs can be applied sequentially"
-      (def expr
-        '(eval-list
-          (verb (set status) "sets document status")
+    (def expr
+      '(eval-list
+        (verb (set status) (sets document status))
 
-          (to (set status) application
-              (use (fn [application status]
-                     (merge application {:status (str status)}))))
+        (to (set status) application
+            (use (fn [application status]
+                   (merge application {:status (str status)}))))
 
-          (to mail application
-              (use #(do (prn %2) (merge %1 {:sent true}))))
+        (to mail application
+            (use #(do (prn %2) (merge %1 {:sent true}))))
 
-          ((set status) application rejected)
-          (mail application applicant-email)))
+        ((set status) application rejected) 
+        (mail application applicant-email)))
 
-      (def env
-        {:application
-         ^{:about "My application to google ai"}
-         {:text "Hey, we can work together"}})
+    (def env
+      {:application
+       ^{:about "My application to google ai"}
+       {:text "Hey, we can work together"}})
 
-      (matcho/assert
-       {:sent true}
-       (lynx/evaluate expr env))))
+    (matcho/assert
+     {:sent true}
+     (lynx/evaluate expr env))))
 
 (deftest extending-with-code
   (testing "application logic is added with this interface"
     (def expr
       '(eval-list
+
         (to (set status) application
             (use set-status))
 
         (do (set status) application accepted)))
 
-    (lynx/f :set-status [app status]
-            (merge app {:status (str status)}))
+    (lynx/f :set-status
+     [app status]
+     (merge app {:status (str status)}))
 
     (matcho/assert
      {:status "accepted"}
      (lynx/evaluate expr {:application {:name "Alan" :family "Kay"}})))
 
   (testing "if you specify env as the first arg you get whole execution context"
-    ;; TODO add argcheck
-
     (def expr
       '(eval-list
         (to (set status) application
@@ -189,8 +202,10 @@
 
         (do (set status) application accepted)))
 
-    (lynx/f :set-status [env app status]
-            {:status (str status) :number (:number env)})
+    (lynx/f
+     :set-status
+     [env app status]
+     {:status (str status) :number (:number env)})
 
     (matcho/assert
      {:status "accepted" :number 1}
@@ -215,6 +230,7 @@
 (deftest control-flow
   (testing "use when to control flow"
     "body of when is not evaluated if conditions do not pass"
+
     (def state (atom 0))
 
     (def expr
@@ -282,8 +298,10 @@
   (testing "execution is logged into the env"
     (def expr
       '(eval-list
+
         (to send (letter of intent)
             (use identity))
+
         (do send (letter of intent))))
 
     (matcho/assert
