@@ -58,28 +58,65 @@
 (i/expr
  '(do &)
  (fn [env verb noun & params]
-   (let [op (get-in env [::i/terms verb :applies-to noun :with])
-         args (cons (get env (utils/->keyword noun)) params)]
-     [(-> env
-          (update-in [::i/terms verb :applied] conj {:time (:lynx.core/time env) :noun noun})
-          (update :lynx.core/time + 1))
-      (apply op args)])))
+   (if-let [op (get-in env [::i/terms verb :applies-to noun :with])]
+     (let [args (cons (get env (utils/->keyword noun)) params)]
+       [(-> env
+            (update-in [::i/terms verb :applied] conj {:time (:lynx.core/time env) :noun noun})
+            (update :lynx.core/time + 1))
+        (apply op args)])
+     (let [error
+           {:context [:do verb noun]
+            :error :verb-not-defined
+            :lucky-guess "Have you renamed something recently?"}]
+       (throw (Exception. (pr-str error)))))))
+
+(i/expr
+ '(can-be * &)
+ (fn [env noun & args]
+   [(update-in env
+               [::i/terms noun :props]
+               (fn [props]
+                 (->> args
+                      (map (fn [adj] [adj {}]))
+                      (into {})
+                      (merge props))))
+    noun]))
 
 (i/expr
  '(is * *)
  (fn [env noun adj]
-   (let [pred (get-in env [::i/terms adj :applies-to noun :with])]
-     (when (nil? pred)
-       (let [error
-             {:context [:is noun adj]
-              :error :adjective-not-defined
-              :lucky-guess "Have you renamed something recently?"}]
-         (throw (Exception. (pr-str error)))))
-     (let [noun-value
-           (if-let [generic (get-in env [::i/terms noun :property-of])]
-             (get env (utils/->keyword generic))
-             (get env (utils/->keyword noun)))]
-       [env (pred noun-value)]))))
+   (let [pred (get-in env [::i/terms adj :applies-to noun :with])
+         error
+         {:context [:is noun adj]
+          :error :adjective-not-defined
+          :lucky-guess "Have you renamed something recently?"}]
+     (if (not (nil? pred))
+       (let [noun-value
+             (if-let [generic (get-in env [::i/terms noun :property-of])]
+               (get env (utils/->keyword generic))
+               (get env (utils/->keyword noun)))
+             pred-res (pred noun-value)]
+         [(assoc-in env [::i/terms noun :props adj :is] (boolean pred-res))
+          pred-res])
+       (if-let [props (get-in env [::i/terms noun :props])]
+         (let [other-props
+               (->> (dissoc props adj)
+                    (map #(:is (second %))))
+               pred-res
+               {:is true :deduced true}]
+           (cond
+             (and (get props adj) (every? false? other-props))
+             [(update-in env [::i/terms noun :props adj]
+                         merge {:is true :deduced true})
+              {:is true :deduced true}]
+
+             (and (get props adj) (some true? other-props))
+             [(update-in env [::i/terms noun :props adj]
+                         merge {:is false :deduced true})
+              {:is false :deduced true}]
+
+             :else (throw (Exception. (pr-str error)))))
+         (throw (Exception. (pr-str error))))))))
 
 (i/expr
  '(when * '&)
@@ -89,9 +126,8 @@
      [env nil])))
 
 (defn define-term [env tp term definition]
-  (let [term
-        {:type tp :symbol term :definition definition}]
-    (update-in env [::i/terms term] merge term)))
+  (update-in env [::i/terms term]
+             merge {:type tp :symbol term :definition definition}))
 
 (i/expr
  '(of *)
@@ -129,4 +165,9 @@
  (fn [env & conds]
    [env
     (every? identity conds)]))
+
+(i/expr
+ '(not *)
+ (fn [env term]
+   [env (not term)]))
 

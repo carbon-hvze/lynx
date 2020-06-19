@@ -2,14 +2,13 @@
   (:require
    [matcho.core :as matcho]
    [lynx.core :as lynx]
+   [lynx.log :as log]
    [clojure.test :refer :all]))
 
 ;; TODO add argcheck
 ;; most urgent todos:
 
-;; finish test for when
 ;; add log to eval-exp!
-;; finish cleo test
 
 ;; TODO
 (testing "natural language can be generated from lynx code")
@@ -52,6 +51,8 @@
 
         (define integer)))
 
+    (lynx/evaluate* expr)
+
     (is (= (lynx/evaluate expr) '(just a positive number))))
 
   (testing "noun can have adjective value"
@@ -65,6 +66,29 @@
     
     (is (true? (lynx/evaluate expr {:integer 4})))
     (is (false? (lynx/evaluate expr {:integer 5}))))
+
+  (testing "adjective values can be deduced"
+    ;; for now only if complementary adj
+    ;; was checked explicitly
+    (def expr
+      '(eval-list
+
+        (to (know-if integer even)
+            (use even?))
+
+        (can-be integer even odd)
+
+        (integer even)
+
+        (integer odd)))
+
+    (matcho/assert
+     {:is true :deduced true}
+     (lynx/evaluate expr {:integer 3}))
+
+    (matcho/assert
+     {:is false :deduced true}
+     (lynx/evaluate expr {:integer 4})))
 
   (testing "some nouns make sense only as the property of other"
     (def expr
@@ -95,13 +119,15 @@
   (testing "verb are applied to nouns"
     (def expr
       '(to increment integer
-        (use #(+ % 1))))
+           (use #(+ % 1))))
 
     (is (= 'increment (lynx/evaluate expr))))
 
   (testing "verb can be applied"
     (def expr
       '(eval-list
+
+        (noun integer (positive number))
 
         (to increment integer
          (use #(+ % 1)))
@@ -312,4 +338,56 @@
      (-> expr
          (lynx/evaluate* {:letter-of-intent "Hello, my dear!"})
          first
-         ::lynx/log))))
+         ::lynx/log)))
+
+  (testing "some helpers are implemented for log"
+    (def expr
+      '(eval-list
+
+        (to send (letter of intent)
+            (use identity))
+
+        (do send (letter of intent))))
+
+    (def log (-> expr
+                 (lynx/evaluate* {:letter-of-intent "Hello, my dear!"})
+                 first
+                 ::lynx/log))
+
+   (matcho/assert
+    {:start-time 0
+     :end-time 0
+     :expression '(to send (letter of intent) (use identity))
+     :result 'send}
+    (log/find log '(to &)))))
+
+(deftest logic-predicates
+  (testing "and predicate"
+    (def expr
+      '(eval-list
+        (to (know-if number odd)
+            (use odd?))
+        (to (know-if number positive)
+            (use pos?))
+
+        (when (and (number odd)
+                   (number positive))
+          okay)))
+
+    (is (= 'okay (lynx/evaluate expr {:number 3})))
+    (is (nil? (lynx/evaluate expr {:number 4}))))
+
+  (testing "not predicate"
+    (def expr
+      '(eval-list
+        (to (know-if number odd)
+            (use odd?))
+        (to (know-if number positive)
+            (use pos?))
+
+        (when (and (not (number odd))
+                   (number positive))
+          okay)))
+
+    (is (nil? (lynx/evaluate expr {:number 3})))
+    (is (= 'okay (lynx/evaluate expr {:number 4})))))

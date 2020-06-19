@@ -67,6 +67,12 @@
              :result expr}]
     (assoc env :lynx.core/log log)))
 
+(defn find-term [env term]
+  (->> (::terms env)
+       (filter (fn [[k v]] (= k term)))
+       first
+       second))
+
 (defn eval-expr! [env expr]
   (if-let [{:keys [pattern fun]} (implementation env expr)]
     (let [eval-subexp
@@ -88,26 +94,24 @@
                (map-indexed (fn [idx v] [(+ idx 1) v]))
                (reduce eval-subexp {:env env :args [] :lynx.core/log []}))
 
-          [env** res] (apply fun env* args)
+          [{impl-log :lynx.core/log :as env**} res] (apply fun env* args)
 
           expr-log 
-          {:start-time (:lynx.core/time env**)
-           :end-time (:lynx.core/time env)
-           :expression expr
-           :result res
-           :subexp subexp-log}]
+          (cond-> {:start-time (:lynx.core/time env**)
+                   :end-time (:lynx.core/time env)
+                   :expression expr
+                   :result res
+                   :subexp subexp-log}
+            (not-empty impl-log) (update :subexp conj impl-log))]
       [(assoc env** :lynx.core/log expr-log) res])
     (if (seq? expr)
-      (if-let [{term-type :type}
-               (->> (::terms env)
-                    (filter (fn [[k v]] (= k (first expr))))
-                    first
-                    second)]
+      (let [{fterm-type :type} (find-term env (first expr))
+            {sterm-type :type} (find-term env (second expr))]
         (cond
-          (= term-type :noun) (eval-expr! env (concat '(is) expr))
-          (= term-type :verb) (eval-expr! env (concat '(do) expr))
-          :else [(leaf-log env expr) expr])
-        [(leaf-log env expr) expr])
+          (= fterm-type :noun) (eval-expr! env (concat '(is) expr))
+          (= fterm-type :verb) (eval-expr! env (concat '(do) expr))
+          (and (= 2 (count expr)) (= sterm-type :noun)) (eval-expr! env (concat '(do) expr))
+          :else [(leaf-log env expr) expr]))
       [(leaf-log env expr)  expr])))
 
 
