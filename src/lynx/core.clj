@@ -18,12 +18,13 @@
   (cond
     (list? expr) expr
     (keyword? expr)
-    (->> (str/split (name expr) #"\.")
-         (str/join "/")
-         (#(str %1 ".lnx"))
-         io/resource
-         slurp
-         read-string)))
+    (if-let [namespc
+             (-> (str/replace (name expr) "." "/")
+                 (str/replace  "-" "_")
+                 (#(str %1 ".lnx"))
+                 io/resource)]
+      (read-string (slurp namespc))
+      (throw (Exception. (str "namespace " expr " not found"))))))
 
 (defn evaluate*
   ([expr] (i/eval-expr! (merge @i/env {::time 0}) (prepare-expr expr)))
