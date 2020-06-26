@@ -6,7 +6,7 @@
    [matcho.core :as matcho]))
 
 (deftest pattern-matching
-  (testing "& wildcard works"
+  (testing "& wildcard matches any expr"
     (def expr
       '(eval-list
         (to increment integer
@@ -17,13 +17,21 @@
      {:pattern '(eval-list &)}
      (i/implementation @i/env expr)))
 
+  (testing "& wildcard means zero or more times"
+    (def expr
+      '(do increment integer))
+
+    (matcho/assert
+     {:pattern '(do * '* &)}
+     (i/implementation @i/env expr)))
+
   (testing "* wildcard works"
     (def expr
       '(to increment integer
            (use #(+ % 1))))
 
     (matcho/assert
-     {:pattern '(to * * (use *))}
+     {:pattern '(to * '* (use *))}
      (i/implementation @i/env expr)))
 
   (testing "weights work"
@@ -32,7 +40,7 @@
            (use even?)))
 
     (matcho/assert
-     {:pattern '(to (know-if *) (use *))}
+     {:pattern '(to (know-if '* *) (use *))}
      (i/implementation @i/env expr)))
 
   (testing "symbols are not matched"
@@ -47,18 +55,19 @@
      {:pattern '(when * '&)}
      (i/implementation @i/env expr)))
 
+  (testing "quoted subexpressions are matched"
+    (def expr
+      '(to (get client)
+           (use identity)))
+
+    (matcho/assert
+     {:pattern '(to '(get *) (use *))}
+     (i/implementation @i/env expr)))
+
   (testing "correct impl is matched"
     (matcho/assert
-     {:pattern '(noun * *)}
-     (i/implementation @i/env '(noun a (some noun))))
+     {:pattern '(noun '* *)}
+     (i/implementation @i/env '(noun a (some noun)))))
 
-    (matcho/assert
-     {:pattern '(noun * (of *) &)}
-     (i/implementation @i/env '(noun a (of b) (some definition))))
-
-    (matcho/assert
-     {:pattern '(noun * (of *))}
-     (i/implementation @i/env '(noun a (of b))))))
-
-(i/match-expr '(noun * (of *))'(noun a (of b) (some definition)))
-
+  (testing "symbols are matched to nothing"
+    (is (nil? (i/implementation @i/env 'my-symbol)))))

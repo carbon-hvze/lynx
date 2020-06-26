@@ -4,5 +4,5 @@
 
 (defn ->keyword [term]
   (cond 
-    (list? term) (keyword (str/join "-" term))
+    (seq? term) (keyword (str/join "-" term))
     :else (keyword term)))

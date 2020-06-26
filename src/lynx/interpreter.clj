@@ -1,4 +1,6 @@
-(ns lynx.interpreter)
+(ns lynx.interpreter
+  (:require
+   [lynx.utils :as utils]))
 
 (defonce env (atom {}))
 
@@ -20,6 +22,11 @@
 (defn match-expr [pattern lst]
   (let [weight
         (cond
+          (and (nil? lst) (not-empty pattern)
+               (or (= (first pattern) '&)
+                   (= (first pattern) '(quote &))))
+          0
+
           (and (nil? pattern) (nil? lst)) 0
           (and (symbol? pattern) (symbol? lst) (= pattern lst)) 0
           (and (seq? pattern) (seq? lst)
@@ -31,6 +38,8 @@
 
               (and (or (= '* phead) (= '(quote *) phead)))
               (combine 1 (match-expr ptail ltail))
+
+              (= phead 'quote) (combine 0 (match-expr (first ptail) lst))
 
               (and (seq? phead) (seq? lhead))
               (combine
@@ -73,9 +82,15 @@
        first
        second))
 
+(defn resolve-noun [env noun]
+  (or (get env (utils/->keyword noun))
+      (get-in env [::terms noun :value])))
+
 (defn eval-expr! [env expr]
-  (if-let [{:keys [pattern fun]} (implementation env expr)]
-    (let [eval-subexp
+  (let [{:keys [pattern fun] :as impl} (implementation env expr)]
+    (cond
+     (not-empty impl) 
+     (let [eval-subexp
           (fn [acc [idx sub-exp]]
             (let [ex (get (vec pattern) idx)
                   quoted-arg? (and (seq? ex) (= (first ex) 'quote))
@@ -104,15 +119,22 @@
                    :subexp subexp-log}
             (not-empty impl-log) (update :subexp conj impl-log))]
       [(assoc env** :lynx.core/log expr-log) res])
-    (if (seq? expr)
-      (let [{fterm-type :type} (find-term env (first expr))
-            {sterm-type :type} (find-term env (second expr))]
-        (cond
-          (= fterm-type :noun) (eval-expr! env (concat '(is) expr))
-          (= fterm-type :verb) (eval-expr! env (concat '(do) expr))
-          (and (= 2 (count expr)) (= sterm-type :noun)) (eval-expr! env (concat '(do) expr))
-          :else [(leaf-log env expr) expr]))
-      [(leaf-log env expr)  expr])))
 
+     (seq? expr)
+     (let [term (resolve-noun env expr)
+           {fterm-type :type} (find-term env (first expr))
+           {sterm-type :type} (find-term env (second expr))]
+       (cond
+         (not (nil? term)) [env term]
+         (= fterm-type :noun) (eval-expr! env (concat '(is) expr))
+         (= fterm-type :verb) (eval-expr! env (concat '(do) expr))
+         (and (= 2 (count expr)) (= sterm-type :noun)) (eval-expr! env (concat '(do) expr))
+         :else [(leaf-log env expr) expr]))
+
+     (not (nil? (resolve-noun env expr)))
+     [env (resolve-noun env expr)]
+
+     :else
+     [(leaf-log env expr) expr])))
 
 

@@ -14,22 +14,26 @@
              :f (fn ~args ~body)})
      (get-in @i/env [::i/lambdas ~kw])))
 
-(defn prepare-expr [expr]
+(defn read-ns [ns-name]
+  (if-let [namespc
+           (-> (str/replace (name ns-name) "." "/")
+               (str/replace  "-" "_")
+               (#(str %1 ".lnx"))
+               io/resource)]
+    (read-string (slurp namespc))
+    (throw (Exception. (str "namespace " ns-name " not found")))))
+
+(defn prepare-expr [& [f & other]]
   (cond
-    (list? expr) expr
-    (keyword? expr)
-    (if-let [namespc
-             (-> (str/replace (name expr) "." "/")
-                 (str/replace  "-" "_")
-                 (#(str %1 ".lnx"))
-                 io/resource)]
-      (read-string (slurp namespc))
-      (throw (Exception. (str "namespace " expr " not found"))))))
+    (list? f) (concat f other)
+    (keyword? f) (concat (read-ns f) other)
+    :else f))
 
 (defn evaluate*
   ([expr] (i/eval-expr! (merge @i/env {::time 0}) (prepare-expr expr)))
-  ([expr env & rest]
-   (i/eval-expr! (merge @i/env {::time 0} env) (concat (prepare-expr expr) (map prepare-expr rest)))))
+  ([expr env & other]
+   (let [expr* (apply prepare-expr expr other)]
+     (i/eval-expr! (merge @i/env {::time 0} env) expr*))))
 
 (defn evaluate [& args] (second (apply evaluate* args)))
 
