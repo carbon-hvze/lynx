@@ -75,15 +75,19 @@
 
         (do send (letter of intent))))
 
+    (def result
+      (-> expr
+          (lynx/evaluate* {:letter-of-intent "Hello, my dear!"})
+          first
+          ::lynx/log))
+
     (matcho/assert
-     {:result "Hello, my dear!"
-      :subexp
-      [{:result 'send}
-       {:result "Hello, my dear!"}]}
-     (-> expr
-         (lynx/evaluate* {:letter-of-intent "Hello, my dear!"})
-         first
-         ::lynx/log)))
+     {:expression
+      '(eval-list
+        (to send (letter of intent)
+            (use identity))
+        (do send (letter of intent)))}
+     result))
 
   (testing "some helpers are implemented for log"
     (def expr
@@ -100,8 +104,8 @@
                  ::lynx/log))
 
     (matcho/assert
-     {:start-time 0
-      :end-time 0
+     {;;:start-time 0
+      ;;:end-time 0
       :expression '(to send (letter of intent) (use identity))
       :result 'send}
      (log/find log '(to &)))))

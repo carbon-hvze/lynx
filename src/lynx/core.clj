@@ -5,13 +5,13 @@
    [clojure.java.io :as io]
    [clojure.string :as str]))
 
-(defmacro f [kw args body & rest]
+(defmacro f [kw args & body]
   `(do
      (swap! i/env assoc-in [::i/lambdas ~kw]
             {:name ~kw
              :args (quote ~args)
              :body (quote ~body)
-             :f (fn ~args ~body)})
+             :f (fn ~args (do ~@body))})
      (get-in @i/env [::i/lambdas ~kw])))
 
 (defn read-ns [ns-name]
