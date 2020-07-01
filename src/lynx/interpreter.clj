@@ -82,17 +82,14 @@
        first
        second))
 
-(defn resolve-noun [env noun]
-  (or (get env (utils/->keyword noun))
-      (get-in env [::terms noun :value])))
-
 (defn ->log [result]
   (cond
     (fn? result) (pr-str result)
     :else result))
 
 (defn eval-expr! [env expr]
-  (let [{:keys [pattern fun] :as impl} (implementation env expr)]
+  (let [{:keys [pattern fun] :as impl} (implementation env expr)
+        term-cfg (utils/resolve-noun env expr)]
     (cond
       (not-empty impl) 
       (let [eval-subexp
@@ -129,18 +126,26 @@
         [(assoc env** :lynx.core/log expr-log) res])
 
       (seq? expr)
-      (let [term (resolve-noun env expr)
-            {fterm-type :type} (find-term env (first expr))
+      (let [{fterm-type :type} (find-term env (first expr))
             {sterm-type :type} (find-term env (second expr))]
         (cond
-          (not (nil? term)) [env term]
-          (= fterm-type :noun) (eval-expr! env (concat '(is) expr))
-          (= fterm-type :verb) (eval-expr! env (concat '(do) expr))
-          (and (= 2 (count expr)) (= sterm-type :noun)) (eval-expr! env (concat '(do) expr))
+          (and (not-empty term-cfg)
+               (= (:type term-cfg) :noun))
+          [env (:value term-cfg)]
+
+          (= fterm-type :noun)
+          (eval-expr! env (concat '(is) expr))
+
+          (= fterm-type :verb)
+          (eval-expr! env (concat '(do) expr))
+
+          (and (= 2 (count expr)) (= sterm-type :noun))
+          (eval-expr! env (concat '(do) expr))
+
           :else [(leaf-log env expr) expr]))
 
-      (not (nil? (resolve-noun env expr)))
-      [env (resolve-noun env expr)]
+      (and (symbol? expr) (not-empty term-cfg) (= :noun (:type term-cfg)))
+      [env (:value term-cfg)]
 
       :else
       [(leaf-log env expr) expr])))

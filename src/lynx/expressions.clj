@@ -73,7 +73,7 @@
  '(do * '* &)
  (fn [env verb noun & params]
    (if-let [op (get-in env [::i/terms verb :applies-to noun :with])]
-     (let [args (cons (i/resolve-noun env noun) params)]
+     (let [args (cons (utils/get-noun env noun) params)]
        [(-> env
             (update-in [::i/terms verb :applied] conj {:time (:lynx.core/time env) :noun noun})
             (update :lynx.core/time + 1))
@@ -100,7 +100,7 @@
  '(is '* *)
  (fn [env noun adj]
    (let [pred (get-in env [::i/terms adj :applies-to noun :with])
-         noun-value (i/resolve-noun env noun)
+         noun-value (utils/get-noun env noun)
          props (get-in env [::i/terms noun :props])
 
          error
@@ -158,7 +158,7 @@
     noun]))
 
 (i/expr
- '(define *)
+ '(define '*)
  (fn [env term]
    [env
     (->> (vals (::i/terms env))
@@ -169,8 +169,7 @@
 (i/expr
  '(and &)
  (fn [env & conds]
-   [env
-    (every? identity conds)]))
+   [env (every? identity conds)]))
 
 (i/expr
  '(not *)
@@ -180,5 +179,5 @@
 (i/expr
  '(no '*)
  (fn [env term]
-   [env (not (i/resolve-noun env term))]))
+   [env (not (utils/get-noun env term))]))
 

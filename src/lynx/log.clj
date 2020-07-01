@@ -9,6 +9,10 @@
       (dissoc log :subexp)
 
       (not-empty subexp)
-      (->> (map #(find % pattern) subexp)
-           (filter identity)
-           first))))
+      (let [results 
+            (->> (map #(find % pattern) subexp)
+                 (filter identity))]
+        (cond
+          (empty? results) nil
+          (= 1 (count results)) (first results)
+          :else (flatten results))))))
