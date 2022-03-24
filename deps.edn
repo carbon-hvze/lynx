@@ -1,11 +1,10 @@
 {:paths ["src" "resources"]
- :deps {org.clojure/clojure {:mvn/version "1.10.0-alpha4"}}
+ :deps {org.clojure/clojure {:mvn/version "1.11.0"}}
  :aliases
  {:dev
   {:extra-paths ["test"]
    :extra-deps
    {com.cognitect/test-runner
-    {:git/url "https://github.com/cognitect-labs/test-runner.git"
-     :sha "3cb0a9daf1cb746259dc8309b218f9211ad3b33b"}
-
+    {:git/url "https://github.com/cognitect-labs/test-runner"
+     :sha "cc75980b43011773162b485f46f939dc5fba91e4"}
     healthsamurai/matcho {:mvn/version "0.3.7"}}}}}
