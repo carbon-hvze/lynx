@@ -1,10 +1,10 @@
-(ns lynx.expressions-test
+(ns lynx.logic-test
   (:require
    [lynx.core :as lynx]
    [clojure.test :refer :all]
    [matcho.core :as matcho]))
 
-(deftest logic-predicates
+(deftest predicates
   (testing "and predicate"
     (def expr
       '(eval-list
@@ -35,7 +35,7 @@
     (is (nil? (lynx/evaluate expr {:number 3})))
     (is (= 'okay (lynx/evaluate expr {:number 4}))))
 
-  (testing "no is used to check if noun value exists"
+  (testing "use no predicate to check if noun value exists"
     (def expr
       '(when (no integer)
          (return this list)))
