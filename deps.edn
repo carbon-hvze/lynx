@@ -1,5 +1,9 @@
 {:paths ["src" "resources"]
- :deps {org.clojure/clojure {:mvn/version "1.11.0"}}
+ :deps {org.clojure/clojure {:mvn/version "1.11.0"}
+        overtone/midi-clj {:git/url "https://github.com/carbon-hvze/midi-clj"
+                           :sha "b080a235e94e871371a554f36debfedda86f5825"}
+        carbon-hvze/tools {:git/url "https://github.com/carbon-hvze/tools"
+                           :sha "b87081653823b661d4f2343a5bee0614fe750ddb"}}
  :aliases
  {:dev
   {:extra-paths ["test"]

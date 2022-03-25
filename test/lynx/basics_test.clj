@@ -7,7 +7,7 @@
 
 (deftest composition-features
 
-  (testing "there are clojure-like namespaces"
+  (testing "eval file from classpath"
     (is (= (lynx/evaluate :examples.identity {:argument "420"}) "420")))
 
   (testing "lynx code can be grouped"

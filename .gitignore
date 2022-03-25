@@ -18,3 +18,4 @@ pg_wal.tar.gz
 db-sandbox.sql
 backend/test/testing/samples/samples.debug
 sandbox.clj
+.clj-kondo/
