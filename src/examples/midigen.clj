@@ -13,16 +13,16 @@
 
             (noun scale (system of pitches))
 
-            (to produce (chromatic sequence)
+            (to list (chromatic sequence)
                 (use (fn [_] (range 0 127))))
 
-            (to build scale
-                (use (fn [_ root scale-type] root)))
+            (to build scale (use scalegen))
 
-            (produce (chromatic sequence))
-            (build scale gsharp locrian)))
+            (then (list (chromatic sequence))
+                  (build scale gsharp locrian))))
 
-(lynx/f :build-scale [])
+(lynx/f :scalegen [env _ root scale-type]
+        (reduce + (:chromatic-sequence env)))
 
 (lynx/evaluate expr {})
 
