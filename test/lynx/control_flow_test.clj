@@ -22,7 +22,7 @@
 
         (to cache integer
             (use (fn [i]
-                  (reset! lynx.control-flow-test/state i))))
+                   (reset! lynx.control-flow-test/state i))))
 
         (to (know-if integer odd)
             (use odd?))
@@ -37,6 +37,23 @@
 
     (is (= 4 (lynx/evaluate expr {:integer 3})))
 
-    (is (= 3 @state))))
+    (is (= 3 @state)))
+
+  (testing "use then to pipe expressions"
+    (def expr
+      '(eval-list
+        (to increment integer
+            (use #(+ % 1)))
+
+        (to double integer
+            (use #(* % 2)))
+
+        "verbs in then block update key bindings in context"
+
+        (then
+         (increment integer)
+         (double integer))))
+
+    (is (= 8 (lynx/evaluate expr {:integer 3})))))
 
 

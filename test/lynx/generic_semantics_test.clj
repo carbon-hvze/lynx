@@ -28,14 +28,22 @@
      contact
      (lynx/evaluate expr {:candidate contact})))
 
-  (testing "some compound terms are special forms that are evaluated not like functions"
+  (testing "some compound terms are special forms that have arbitrary execution rules"
     (def expr
       '(eval-list
         (to send (letter of intent)
             (use identity))
         (do send (letter of intent))))
 
-    (is (= (lynx/evaluate expr {:letter-of-intent "Hello, my dear!"}) "Hello, my dear!"))))
+    (is (= (lynx/evaluate expr {:letter-of-intent "Hello, my dear!"}) "Hello, my dear!")))
+
+  (testing "strings in lynx code are natural annotations"
+    (def expr
+      '(eval-list
+        "look below"
+        (noun annotation (description in natural language))))
+
+    (is (lynx/evaluate expr {}))))
 
 (deftest binding-features
 
@@ -56,7 +64,7 @@
      {:status "accepted"}
      (lynx/evaluate expr {:application {:name "Alan" :family "Kay"}})))
 
-  (testing "set status receives whole execution context as a first arg"
+  (testing "if you specify env as the first arg you get whole execution context"
     (def expr
       '(eval-list
         (to (set status) application

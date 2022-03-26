@@ -181,3 +181,19 @@
  (fn [env term]
    [env (not (utils/get-noun env term))]))
 
+(i/expr
+ '(then '&)
+ (fn [env & body]
+   (loop [cur-env env
+          [fexp & tail] body]
+     (let [[env* res] (i/eval-expr! cur-env fexp)]
+       (cond
+         (seq? fexp)
+         (let [{exp-type :type nouns :applies-to} (i/find-term env* (first fexp))
+               {arg-type :type} (i/find-term env* (second fexp))]
+           (cond
+             (empty? tail) [env* res]
+             (and (= :verb exp-type) (= :noun arg-type))
+             (recur (assoc env* (keyword (second fexp)) res) tail)
+             :else (recur env* tail))))))))
+
