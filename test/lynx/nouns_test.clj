@@ -38,7 +38,7 @@
     (is (true? (lynx/evaluate expr {:integer 4})))
     (is (false? (lynx/evaluate expr {:integer 5}))))
 
-  (testing "bind noun with a function, then define adjective and check if it applies to a nount"
+  (testing "bind noun with a special verb form, then define adjective and check if it applies to a nount"
     (def expr
       '(eval-list
 

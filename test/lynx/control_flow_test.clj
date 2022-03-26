@@ -39,21 +39,41 @@
 
     (is (= 3 @state)))
 
-  (testing "use then to pipe expressions"
+  (testing "use then to pipe verbs"
+    ;; TODO implement case two verbs - two nouns
     (def expr
       '(eval-list
-        (to increment integer
+        (to increment (my integer)
             (use #(+ % 1)))
 
-        (to double integer
+        (to double (my integer)
             (use #(* % 2)))
 
         "verbs in then block update key bindings in context"
 
         (then
-         (increment integer)
-         (double integer))))
+         (increment (my integer))
+         (double (my integer)))))
 
-    (is (= 8 (lynx/evaluate expr {:integer 3})))))
+    (is (= 8 (lynx/evaluate expr {:my-integer 3}))))
+
+  (testing "use verb in then block to bind noun value"
+    (def expr
+      '(eval-list
+        (to stream (ten ones)
+            (use (fn [_] (take 10 (repeat 1)))))
+
+        (to fold with (use fold))
+
+        "verb can look in the env for noun binding"
+        (then
+         (stream (ten ones))
+         (fold with +))))
+
+    ;; TODO support destructuring in the first arg of lynx/f
+    (lynx/f :fold [env _ op-symbol] (reduce (resolve op-symbol) (:ten-ones env)))
+
+    (is (= 10 (lynx/evaluate expr {})))))
+
 
 

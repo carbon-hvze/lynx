@@ -6,8 +6,8 @@
 ;; IMPORTANT
 ;; do not forget to reload after changing expression signature
 
-(defn apply-lambda [env cfg]
-  (fn [& args]
+(defn apply-lambda [envclos cfg]
+  (fn [env & args]
     (let [f-arg (first (:args cfg))
           args* (cond->> args
                   (= f-arg 'env) (cons env)
@@ -25,7 +25,7 @@
 (i/expr
  '(use *)
  (fn [env fun]
-   (let [apply-list (fn [& args] (apply (eval fun) args))
+   (let [apply-list (fn [env & args] (apply (eval fun) args))
          lambda
          (if (symbol? fun)
            (if-let [cfg (get-in env [::i/lambdas (keyword fun)])]
@@ -55,7 +55,7 @@
 
  '(to '(get *) (use *))
  (fn [env [_ noun] f]
-   (let [value (f)]
+   (let [value (f env)]
      [(-> env
           (update-in [::i/terms noun] merge {:type :noun :symbol noun :value value}))
       value])))
@@ -73,7 +73,7 @@
  '(do * '* &)
  (fn [env verb noun & params]
    (if-let [op (get-in env [::i/terms verb :applies-to noun :with])]
-     (let [args (cons (utils/get-noun env noun) params)]
+     (let [args (into [env (utils/get-noun env noun)] params)]
        [(-> env
             (update-in [::i/terms verb :applied] conj {:time (:lynx.core/time env) :noun noun})
             (update :lynx.core/time + 1))
@@ -112,7 +112,7 @@
        (nil? noun-value) [env nil]
 
        (and (not (nil? pred)) (not (nil? noun-value)))
-       (let [pred-res (pred noun-value)]
+       (let [pred-res (apply pred [env noun-value])]
          [(assoc-in env [::i/terms noun :props adj :is] (boolean pred-res))
           pred-res])
 
@@ -186,14 +186,16 @@
  (fn [env & body]
    (loop [cur-env env
           [fexp & tail] body]
-     (let [[env* res] (i/eval-expr! cur-env fexp)]
+     (let [[env* expr-res] (i/eval-expr! cur-env fexp)]
        (cond
          (seq? fexp)
-         (let [{exp-type :type nouns :applies-to} (i/find-term env* (first fexp))
+         (let [{exp-type :type nouns :applies-to :as term} (i/find-term env* (first fexp))
                {arg-type :type} (i/find-term env* (second fexp))]
            (cond
-             (empty? tail) [env* res]
+             (empty? tail) [(merge cur-env env*) expr-res]
              (and (= :verb exp-type) (= :noun arg-type))
-             (recur (assoc env* (keyword (second fexp)) res) tail)
+             (let [noun-key (utils/->keyword (second fexp))
+                   next-env (assoc env* noun-key expr-res)]
+               (recur (merge cur-env next-env) tail))
              :else (recur env* tail))))))))
 
