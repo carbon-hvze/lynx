@@ -1,0 +1,11 @@
+(eval-list
+ (noun (chromatic sequence) (all pitches from chromatic scale))
+
+ (noun scale (system of pitches))
+
+ (to list (chromatic sequence)
+   (use (fn [_] (range 0 127))))
+
+ (to build scale (use scalegen))
+
+)

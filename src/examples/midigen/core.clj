@@ -1,20 +1,13 @@
-(ns migigen.core
+(ns examples.midigen.core
   (:require
    [lynx.core :as lynx]
-   [midigen.scales :as scales]))
+   [examples.midigen.scales :as scales]))
 
-(def expr
-  '(eval-list
-    (noun (chromatic sequence) (all pitches from chromatic scale))
+(def tail-expr
+  '(then (list (chromatic sequence))
+         (build scale gsharp locrian)))
 
-    (noun scale (system of pitches))
+;; TODO get rid of lnx extension and just use .edn files
+(comment
+  (lynx/evaluate :examples.midigen.definitions {} tail-expr))
 
-    (to list (chromatic sequence)
-        (use (fn [_] (range 0 127))))
-
-    (to build scale (use scalegen))
-
-    (then (list (chromatic sequence))
-          (build scale gsharp locrian))))
-
-(lynx/evaluate expr {})

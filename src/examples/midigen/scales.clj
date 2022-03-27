@@ -1,7 +1,7 @@
-(ns midigen.scales
+(ns examples.midigen.scales
   (:require [lynx.core :as lynx]))
 
-(def notes '[c csharp d dsharp e esharp f fsharp g gsharp a asharp b])
+(def notes '[c csharp d dsharp e f fsharp g gsharp a asharp b])
 
 (def locrian-pattern [1, 2, 2, 1, 2, 2, 2])
 
